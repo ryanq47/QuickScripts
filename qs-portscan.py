@@ -9,6 +9,10 @@ operation_block = "[*]"
 
 
 '''
+Notes:
+using .format for strings for compatability with python versions prior to 3.6
+
+
 Little decorator note (still a newer concept to me), instead of running the function that the @ is above, it 
 tells python to run the @function instead, and calls the function under the decorator in the process
 
@@ -20,27 +24,64 @@ def execution_time(func):
         result = func(*args, **kwargs)
         end_time = time.time()
         execution_time = end_time - start_time
-        print(f"Execution time: {execution_time:.4f} seconds")
+        print("Execution time: {:.4f} seconds".format(execution_time))
         return result
     return wrapper
 
 class PortScan:
     def __init__(self, ports=[1,1024], timeout=0.5, target="127.0.0.1", method="", process_allocation="threadpool"):
+        if not self._valuecheck(target=target, ports=ports,timeout=timeout, method=method, process_allocation=process_allocation):
+            exit()
+        
         self.target = target
-        self.timeout = float(timeout)
+        self.timeout = timeout = 0.0000001 if timeout == 0 else timeout #0 causes issues, turning it into practically 0
         self.ports = self._port_sort(ports)
         self.method = method
         self.process_allocation = process_allocation
 
+
     def __str__(self):
-        return f"=== Scan Details: target: {self.target} timeout: {self.timeout} ports: {self.ports[0]}-{self.ports[-1]} method: {self.method} process allocation: {self.process_allocation} ==="
+        return "=== Scan Details: target: {} timeout: {} ports: {}-{} method: {} process allocation: {} ===".format(
+    self.target, self.timeout, self.ports[0], self.ports[-1], self.method, self.process_allocation)
+
     
+    def _valuecheck(self, target, ports, timeout, method, process_allocation):
+        '''
+        This method is a double check that items are the right types/values. if running as a one off, argparse checks as well.
+        This is mainly for bulletproofing/making it apparent where you screwed up.
+        '''
+        #self.target = str
+        #self.timeout = float, also if 0, self.target = 0.0000001 (can't do 0, causes issue with socket)
+        #self.ports?
+        #sel.method = str & equal to one of 2 values (telnet, socket)
+        #self.process_allovation str & equal to one of 3 values (singlethread, professpool, threadpool)
+
+        if not isinstance(target, str):
+            print("{} target parameter is the incorrect type: {}, {}. Expected a string.".format(error_block, target, type(target)))
+            return False
+        
+        if not isinstance(timeout, float):
+            print("{} timeout parameter is the incorrect type: {}, {}. Expected a float.".format(error_block, timeout, type(timeout)))
+            return False
+        
+        if not isinstance(method, str) or method not in ["telnet", "socket"]:
+            print("{} method parameter is the incorrect type: {}, {}. Expected a str, with a value of 'telnet' or 'socket'.".format(error_block, method, type(method)))
+            return False
+        
+        if not isinstance(process_allocation, str) or process_allocation not in ["processpool", "threadpool", "singleprocess", "single"]:
+            print("{} process_allocation parameter is the incorrect type or value: {}, {}. Expected a str, with a value of 'processpool', 'threadpool', or 'singleprocess'.".format(error_block, process_allocation, type(process_allocation)))
+            return False
+
+
+        return True
+        pass
+
     @execution_time
     def socket_scan(self):
         '''
         Standard socket portsan - single thread/process
         '''
-        print(f"{error_block} Warning! Using single process mode. This will take longer than usual, and is included only for compatability reasons")
+        print("{} Warning! Using single process mode. This will take longer than usual, and is included only for compatibility reasons".format(error_block))
         for port_to_scan in self.ports:
             self._socket_scan_implementation(ip=self.target, port=port_to_scan, timeout=self.timeout)
 
@@ -68,11 +109,12 @@ class PortScan:
                 futures = [executor.submit(self._socket_scan_implementation, self.target, port, self.timeout) for port in self.ports]
                 #wait(futures, timeout=2)   
         elif self.process_allocation == "singleprocess" or self.process_allocation == "single":
-            print(f"{error_block} Warning! Using single process mode. This will take longer than usual, and is included only for compatability reasons")
+            print("{} Warning! Using single process mode. This will take longer than usual, and is included only for compatibility reasons".format(error_block))
             for port_to_scan in self.ports:
                 self._socket_scan_implementation(ip=self.target, port=port_to_scan, timeout=self.timeout)
         else:
-            print(f"Invalid process_allocation option: {self.process_allocation}")
+            print("Invalid process_allocation option: {}".format(self.process_allocation))
+            exit()
 
         print("Done!")
 
@@ -83,13 +125,13 @@ class PortScan:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(timeout)
             sock.connect(("127.0.0.1", port))
-            print(f"{self.target}:{port} is open")
+            print("{}:{} is open".format(self.target, port))
         
         except (ConnectionError, ConnectionRefusedError, TimeoutError) as e:
             pass
 
         except ConnectionResetError as re:
-            print(f"{self.target}:{port} reset. Test Manually")
+            print("{}:{} reset. Test Manually".format(self.target, port))
         
         except Exception as e:
             print(e)
@@ -98,7 +140,7 @@ class PortScan:
         '''
         standard telnet scan
         '''
-        print(f"{error_block} Warning! Using single process mode. This will take longer than usual, and is included only for compatability reasons")
+        print("{} Warning! Using single process mode. This will take longer than usual, and is included only for compatibility reasons".format(error_block))
 
         for port_to_scan in self.ports:
             self._telnet_scan_implementation(ip=self.target, port=port_to_scan)
@@ -123,11 +165,11 @@ class PortScan:
                 futures = [executor.submit(self._telnet_scan_implementation, self.target, port) for port in self.ports]
                 #wait(futures, timeout=2)   
         elif self.process_allocation == "singleprocess" or self.process_allocation == "single":
-            print(f"{error_block} Warning! Using single process mode. This will take longer than usual, and is included only for compatability reasons")
+            print("{} Warning! Using single process mode. This will take longer than usual, and is included only for compatability reasons".format(error_block))
             for port_to_scan in self.ports:
                 self._telnet_scan_implementation(ip=self.target, port=port_to_scan)
         else:
-            print(f"Invalid process_allocation option: {self.process_allocation}")
+            print("Invalid process_allocation option: {}".format(self.process_allocation))
 
         print("Done!")
 
@@ -142,14 +184,14 @@ class PortScan:
             #with Telnet(ip, port, timeout_time) as tn:
             tn = Telnet(host=ip, port=port, timeout=self.timeout)
             tn.close()
-            print(f"{self.target}:{port} is open")
+            print("{}:{} is open".format(self.target, port))
             return True
         # it's okay to ignore these, they just catch a bad/refused connection
         except (ConnectionRefusedError, TimeoutError) as cre:
             return False
 
         except Exception as e:
-            print(f"{error_block} Telnet error occured: {e}")
+            print("{} Telnet error occurred: {}".format(error_block, e))
             #exit()
 
         return False
@@ -172,7 +214,7 @@ class PortScan:
                 for i in port_range:
                     port_list.append(int(i))
             except Exception as e:
-                print(f"{error_block} Error occured while parsing port range: {e}")
+                print("{} Error occurred while parsing port range: {}".format(error_block, e))
                 exit()
         
         elif "," in ports:
@@ -182,11 +224,11 @@ class PortScan:
                     port_list.append(int(i))
 
             except Exception as e:
-                print(f"{error_block} Error occured while parsing ports: {e}")
+                print("{} Error occurred while parsing ports: {}".format(error_block, e))
                 exit()
 
         else:
-            print(f"{error_block} Unrecognized format for ports: {ports}")
+            print("{} Unrecognized format for ports: {}".format(error_block, ports))
             exit()
 
         return port_list
@@ -200,12 +242,12 @@ if __name__ == "__main__":
                         description='The QuickScripts portscanner. No non-standard dependencies required',
                         epilog='-- Designed by ryanq.47 --')
 
-    parser.add_argument('-t', '--target', help="The target you wish to scan. Can be an IP, FQDN, or hostname. Example: 'qs-portscan -t 192.168.0.1'", required=True) 
+    parser.add_argument('-t', '--target', help="The target you wish to scan. Can be an IP, FQDN, or hostname. Example: 'qs-portscan -t 192.168.0.1'", required=True, type=str) 
     parser.add_argument('-p', '--ports', help="The port(s) to scan. For a port range, enter as such: '1-1024', or for select ports: '22,23,80,443'", default="1-1024") 
-    parser.add_argument('-m', '--method', help="The method used to portscan, current options are telnet and socket. Defaults to the fastest implementation available.", default="telnet") 
+    parser.add_argument('-m', '--method', help="The method used to portscan, current options are telnet and socket. Defaults to the fastest implementation available.", default="telnet", type=str) 
     parser.add_argument('-pa', '--processallocation', default = "threadpool",
-                        help="Which method of concurrency to use, 'threadpool' (multiprocess, subject to GIL), 'processpool' (multicore, better for CPU intensive items.) or 'singleprocess' for no concurrency. YMMV, included for compatibility")
-    parser.add_argument('-to', '--timeout', help="The time the protocol will wait for a repsonse from the port. '.5' (seconds) is the default. I would not reccomend going any lower unless you are LAN scanning", default=.25)  
+                        help="Which method of concurrency to use, 'threadpool' (multiprocess, subject to GIL), 'processpool' (multicore, better for CPU intensive items.) or 'singleprocess' for no concurrency. YMMV, included for compatibility", type=str)
+    parser.add_argument('-to', '--timeout', help="The time the protocol will wait for a repsonse from the port. '.5' (seconds) is the default. I would not reccomend going any lower unless you are LAN scanning", default=.25, type=float)  
     parser.add_argument('-d', '--debug', help="Prints debug information", action="store_true")  
     args = parser.parse_args()
 
