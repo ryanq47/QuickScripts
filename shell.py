@@ -24,11 +24,27 @@ def execution_time(func):
 
 class CLASS:
     def __init__(self, ARGS):
+        if not self._valuecheck(ARGS):
+            exit()
         pass
 
     def __str__(self):
         return f"=== Details ==="
 
+
+    def _valuecheck(self):
+        '''
+        This method is a double check that items are the right types/values. if running as a one off, argparse checks as well.
+        This is mainly for bulletproofing/making it apparent where you screwed up.
+        '''
+        #self.VAR = str
+
+
+        if not isinstance(VAR, str):
+            print("{} target parameter is the incorrect type: {}, {}. Expected a string.".format(error_block, VAR, type(VAR)))
+            return False
+        
+        return True
 
 
 

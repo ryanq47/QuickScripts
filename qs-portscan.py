@@ -72,9 +72,7 @@ class PortScan:
             print("{} process_allocation parameter is the incorrect type or value: {}, {}. Expected a str, with a value of 'processpool', 'threadpool', or 'singleprocess'.".format(error_block, process_allocation, type(process_allocation)))
             return False
 
-
         return True
-        pass
 
     @execution_time
     def socket_scan(self):
