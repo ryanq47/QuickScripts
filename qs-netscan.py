@@ -3,10 +3,10 @@ import argparse
 import time
 import ipaddress
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, wait
+import urllib.request
 
 error_block = "[!]"
 operation_block = "[*]"
-
 
 '''
 Little decorator note (still a newer concept to me), instead of running the function that the @ is above, it 
@@ -26,14 +26,15 @@ def execution_time(func):
 class ScapyScanner:
     ## one excception to stdlib rule, optional scapy scans.
     ## mainlyso I can  POC beforedoing raw socket stuff, and leaving it in
-    def __init__(self, targetsubnet, protocol, interface="eth0"):
+    def __init__(self, targetsubnet, protocol, interface="eth0", lookups=True):
         if not self._valuecheck(targetsubnet, protocol, interface):
             #print("TypeFailure")
             exit()
 
         self.target_subnet = targetsubnet
-        self.protocol = protocol
+        self.protocol = protocol#["arp", "icmp"] #protocol # list of protocols, delim by ,
         self.interface = interface
+        self.lookups  = lookups # internet based lookups, true: do lookups, false: don't
 
     def __str__(self):
         return "=== Details: Target Subnet: {}, Library: Scapy, Protocol: {}, interface: {} ===".format(self.target_subnet,self.protocol, self.interface)
@@ -48,7 +49,7 @@ class ScapyScanner:
         #self.VAR = str
 
         #protocol check
-        if not isinstance(protocol, str) or protocol not in ["arp", "icmp"]:
+        if not isinstance(protocol, list): #or protocol not in ["arp", "icmp"]:
             print("{} protocol parameter is the incorrect type or value: {}, {}. Expected a str, with a value of 'arp' or 'icmp'.".format(error_block, protocol, type(protocol)))
             return False
         
@@ -77,7 +78,30 @@ class ScapyScanner:
         return True
     
     #callable function
+    @execution_time
     def scan(self):
+        # generate IP list
+
+        ip_list = calculate_host_ips(self.target_subnet)
+
+        with ProcessPoolExecutor() as executor:
+            for ip in ip_list:
+                if "arp" in self.protocol:
+                    #pass
+                    executor.submit(self._scapy_arp_scan, target_subnet=ip)
+                    #do arp
+                    #executor.submit
+                
+                if "icmp" in self.protocol:
+                    #pass
+                    executor.submit(self._scapy_icmp_scan, ip)
+                    #do icmp
+                    #executor.submit
+
+            
+
+        ''' old method
+        ## start scans
         if self.protocol == "arp":
             self._scapy_arp_scan(target_subnet=self.target_subnet, interface=self.interface)
         elif self.protocol == "icmp":
@@ -89,26 +113,29 @@ class ScapyScanner:
                     executor.submit(self._scapy_icmp_scan, ip)
 
                 #for i in futures:
-                    #print(i)
+                    #print(i)'''
 
 
     ## protocol implementation
     #passing variables instead of using self, just incase this can be multithreaded later
     def _scapy_arp_scan(self, target_subnet="127.0.0.1/24", interface=""):
-        # Craft the ARP request packet
-        arp_request = Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=target_subnet)
+        try:
+            # Craft the ARP request packet
+            arp_request = Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=target_subnet)
 
-        # Send the packet and capture the response
-        result = srp(arp_request, timeout=5, iface=interface, verbose=True)[0]
+            # Send the packet and capture the response
+            result = srp(arp_request, timeout=5, iface=interface, verbose=False)[0]
 
-        # Process the response
-        devices = []
-        for sent, received in result:
-            devices.append({'IP': received.psrc, 'MAC': received.hwsrc})
+            # Process the response
+            devices = []
+            for sent, received in result:
+                devices.append({'IP': received.psrc, 'MAC': received.hwsrc})
 
-        # Print the discovered devices
-        for device in devices:
-            print(f"IP: {device['IP']}\tMAC: {device['MAC']}")
+            # Print the discovered devices
+            for device in devices:
+                print(f"IP: {device['IP']}\tMAC: {device['MAC']} \tVENDOR: {mac_lookup(device['MAC']) if self.lookups else 'Disabled'}")
+        except Exception as e:
+            print("{} Arp error occured: {}".format(error_block, e))
 
     ##This could benefit from multithread/process.Need to understand what is hapening under the 
     #hood first
@@ -124,14 +151,15 @@ class ScapyScanner:
             
             if result is not None:
                 #print(f"ICMP response received from {result[IP].src}")
-                print("{}\t{}".format(result[IP].src, result.summary()))
+                print("IP: {}\tPKT: {}".format(result[IP].src, result.summary()))
 
             else:
                 pass
                 #print("No ICMP response received")
 
         except Exception as e:
-            print(e)
+            print("{} ICMP error occured: {}".format(error_block, e))
+
 
 
 class RawSocketOps:
@@ -172,6 +200,20 @@ def calculate_host_ips(subnet):
     host_ips = [str(ip) for ip in network.hosts()]
     return host_ips
 
+# Note, No performance hit with lookups, as the lookups take longer than the url requests lol
+#idea: dict lookup for already found MACs to save requests - was being picky when tried
+def mac_lookup(mac):
+    try:
+        url = "http://api.macvendors.com/" + str(mac).replace(" ","")
+        response = urllib.request.urlopen(url)
+        mac_vendor = response.read().decode('utf-8')
+        return mac_vendor
+
+    except Exception as e:
+        print("{} Error with MAC Vendor lookup: {}".format(error_block, e))
+        return "Error"
+
+
 if __name__ == "__main__":
     '''Parser is down here for one-off runs, as this script can be imported & used in other pyprojects'''
     parser = argparse.ArgumentParser(
@@ -182,9 +224,11 @@ if __name__ == "__main__":
                         epilog='-- Designed by ryanq.47 --')
     parser.add_argument('-d', '--debug', help="Prints debug information", action="store_true") 
     parser.add_argument('-t', '--targetsubnet', help="The target you wish to scan. Can be an IP, FQDN, or hostname. Example: 'qs-portscan -t 192.168.0.1'", required=True, default="127.0.0.1/24") 
-    parser.add_argument('-p', '--protocol', help="The method/protocl to use to scan", default="arp") 
+    parser.add_argument('-p', '--protocol', help="The method/protocol(s) to use to scan. Enter one, or multiple, i.e.: '-p arp', -p arp icmp", type=str, nargs='+') 
     parser.add_argument('-l', '--library', help="The library you want to use to conduct network operations", default="scapy") 
     parser.add_argument('-i', '--interface', help="The interface you want to scan on.", required=False) 
+    parser.add_argument('--nolookups', help="Don't do any internet based lookups (i.e. MAC vendor lookups)", required=False,action="store_false") 
+
 
     args = parser.parse_args()
 
@@ -210,7 +254,8 @@ if __name__ == "__main__":
         scanner = ScapyScanner(
             targetsubnet=args.targetsubnet,
             protocol=args.protocol,
-            interface = args.interface
+            interface = args.interface,
+            lookups = args.nolookups
         )
 
 
@@ -245,5 +290,9 @@ need to re-learn threadool options & get farmilisar with scapy too
 Ideally, would  like to move away from scapy
 but that may take some time to get the raw socket stuff done
 
+
+
+!! Latest: Fix the error handling.value checking stopping the '-p arp' from working. it just got moved to a list,
+need to adjust it as so
 
 '''
