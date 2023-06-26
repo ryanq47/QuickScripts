@@ -8,6 +8,8 @@ import urllib.request
 error_block = "[!]"
 operation_block = "[*]"
 
+## init this here
+json_out_dict = {}
 '''
 Little decorator note (still a newer concept to me), instead of running the function that the @ is above, it 
 tells python to run the @function instead, and calls the function under the decorator in the process
@@ -133,7 +135,14 @@ class ScapyScanner:
 
             # Print the discovered devices
             for device in devices:
-                print(f"IP: {device['IP']}\tMAC: {device['MAC']} \tVENDOR: {mac_lookup(device['MAC']) if self.lookups else 'Disabled'}")
+                ## doing this as these values a re used a few times & I don't wanna call  mac_lookup more than once
+                temp_ip, temp_mac, temp_vendor = device['IP'], device['MAC'], mac_lookup(device['MAC']) if self.lookups else 'Disabled'
+
+                ## change to .format str
+                #print(f"IP: {temp_ip}\tMAC: {temp_mac} \tVENDOR: {mac_lookup(temp_vendor) if self.lookups else 'Disabled'}")
+                print("IP: {}\tMAC: {}\tVENDOR {}".format(temp_ip, temp_mac, temp_vendor))
+                json_build(ip=temp_ip,mac=temp_mac,vendor=temp_vendor)
+
         except Exception as e:
             print("{} Arp error occured: {}".format(error_block, e))
 
@@ -212,6 +221,24 @@ def mac_lookup(mac):
     except Exception as e:
         print("{} Error with MAC Vendor lookup: {}".format(error_block, e))
         return "Error"
+    
+
+def json_build(ip="", mac="",vendor=""):
+    json_out_dict[mac] = {
+        'ip':ip,
+        'vendor':vendor
+    }
+
+def json_write_to_file(item_to_write="No Contents", filename="qs-netscan-results.json"):
+    try:
+        import json
+        with open(filename, 'w') as file:
+            json.dump(item_to_write, file)
+
+    except ImportError as je:
+        print("{} Error with importing JSON module: {}".format(error_block, je))
+    except Exception as e:
+        print("{} Error with JSON write: {}".format(error_block, e))
 
 
 if __name__ == "__main__":
@@ -260,6 +287,8 @@ if __name__ == "__main__":
 
 
     elif args.library == "socket":
+        print("Socket not yet implemented")
+        exit()
         scanner = SocketScanner(
         )
         #socketclass()
@@ -270,13 +299,23 @@ if __name__ == "__main__":
             ##scapyclass()
     
     try:
+        '''
+        json_build(ip="123.254.11.35", mac="00:11:22:33:44:55",vendor="RQ Industrial")
+        json_build(ip="123.254.11.31", mac="00:11:22:33:44:56",vendor="RQ Industrial")
+        json_write_to_file(item_to_write=json_out_dict)'''
         scanner.scan()
+
+        if args.output:
+            json_write_to_file(item_to_write=json_out_dict)
 
     except PermissionError as pe:
         print("{} Permission error, may need elevated priveleges. \n{} Error Message: {}".format(error_block,error_block,pe))
 
     except KeyboardInterrupt as ke:
         print("Keyboard Interupt... Exiting")
+
+    except Exception as e:
+        print("{} Error Occured: {}".format(error_block, e))
 
 
 '''
