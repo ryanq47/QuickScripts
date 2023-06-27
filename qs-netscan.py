@@ -195,6 +195,25 @@ class RawSocketOps:
         
         return True
 
+class QsUtils:
+    '''
+    A static class used for tools accross the QS scripts
+    '''
+
+    @staticmethod
+    def send_to(dest):
+        '''
+        Send data to a server/other PC. Handy for getting data out
+        '''
+        try:
+            ip, port = dest.split(':')
+        
+        except Exception as e:
+            print("{} Error occured when getting IP & Port for sending data: {}".format(error_block, e))
+
+        # the algorithms send func
+
+
 def continue_anyways():
     '''
     A little function that propmts the user to continue anyway. Returns true/false. 
@@ -241,6 +260,7 @@ def json_write_to_file(item_to_write="No Contents", filename="qs-netscan-results
         print("{} Error with JSON write: {}".format(error_block, e))
 
 
+
 if __name__ == "__main__":
     '''Parser is down here for one-off runs, as this script can be imported & used in other pyprojects'''
     parser = argparse.ArgumentParser(
@@ -254,7 +274,9 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--protocol', help="The method/protocol(s) to use to scan. Enter one, or multiple, i.e.: '-p arp', -p arp icmp", type=str, nargs='+') 
     parser.add_argument('-l', '--library', help="The library you want to use to conduct network operations", default="scapy") 
     parser.add_argument('-i', '--interface', help="The interface you want to scan on.", required=False) 
+    parser.add_argument('-o', '--output', help="Output data in JSON. Add a name after for a filename", required=False, default="qs-netscan-output.json") 
     parser.add_argument('--nolookups', help="Don't do any internet based lookups (i.e. MAC vendor lookups)", required=False,action="store_false") 
+    parser.add_argument('--sendto', help="Send the results (in JSON) to a listener/server/host. Ex: --sendto 127.0.0.1:8080", required=False) 
 
 
     args = parser.parse_args()
@@ -306,7 +328,10 @@ if __name__ == "__main__":
         scanner.scan()
 
         if args.output:
-            json_write_to_file(item_to_write=json_out_dict)
+            json_write_to_file(item_to_write=json_out_dict, filename=args.output)
+
+        if args.sendto:
+            QsUtils.send_to(args.sendto)
 
     except PermissionError as pe:
         print("{} Permission error, may need elevated priveleges. \n{} Error Message: {}".format(error_block,error_block,pe))

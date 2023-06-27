@@ -47,8 +47,23 @@ class CLASS:
         return True
 
 
+class QsUtils:
+    '''
+    A static class used for tools accross the QS scripts
+    '''
 
-    
+    @staticmethod
+    def send_to(dest):
+        '''
+        Send data to a server/other PC. Handy for getting data out
+        '''
+        try:
+            ip, port = dest.split(':')
+        
+        except Exception as e:
+            print("{} Error occured when getting IP & Port for sending data: {}".format(error_block, e))
+
+        # the algorithms send func
 
 
 if __name__ == "__main__":
