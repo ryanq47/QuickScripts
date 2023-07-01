@@ -8,6 +8,7 @@ import urllib.request
 error_block = "[!]"
 operation_block = "[*]"
 
+
 ## init this here
 json_out_dict = {}
 '''
@@ -37,6 +38,11 @@ class ScapyScanner:
         self.protocol = protocol#["arp", "icmp"] #protocol # list of protocols, delim by ,
         self.interface = interface
         self.lookups  = lookups # internet based lookups, true: do lookups, false: don't
+        self.mac_list = ""
+
+
+        '''if self.lookups:
+            self.mac_list = mac_load()'''
 
     def __str__(self):
         return "=== Details: Target Subnet: {}, Library: Scapy, Protocol: {}, interface: {} ===".format(self.target_subnet,self.protocol, self.interface)
@@ -46,7 +52,7 @@ class ScapyScanner:
         This method is a double check that items are the right types/values. if running as a one off, argparse checks as well.
         This is mainly for bulletproofing/making it apparent where you screwed up.
 
-        When possble, provide the user the chance to override the errors with the QsUtils.continue_anyways function
+        When possble, provide the user the chance to override the errors with the continue_anyways function
         '''
         #self.VAR = str
 
@@ -63,7 +69,7 @@ class ScapyScanner:
             #checking for an interface arg in scans that require an interface. Note, None is not a str
             elif interface == None and protocol == "arp":
                 print("{} Interface is 'None'. An interface is required for ARP scans.".format(error_block))
-                if not QsUtils.continue_anyways():
+                if not continue_anyways():
                     return False
             else:
                 print("{} interface parameter is the incorrect type: {}, {}. Expected a str".format(error_block, interface, type(interface)))
@@ -84,7 +90,7 @@ class ScapyScanner:
     def scan(self):
         # generate IP list
 
-        ip_list = QsUtils.calculate_host_ips(self.target_subnet)
+        ip_list = calculate_host_ips(self.target_subnet)
 
         with ProcessPoolExecutor() as executor:
             for ip in ip_list:
@@ -99,8 +105,6 @@ class ScapyScanner:
                     executor.submit(self._scapy_icmp_scan, ip)
                     #do icmp
                     #executor.submit
-
-            
 
         ''' old method
         ## start scans
@@ -213,33 +217,51 @@ class QsUtils:
 
         # the algorithms send func
 
-    @staticmethod
-    def continue_anyways():
-        '''
-        A little function that propmts the user to continue anyway. Returns true/false. 
-        '''
-        if input("Enter 'y' to continue execution (high chance of failure), or any other key to exit: ") == "y":
-            return True
-        else:
-            return False
-    @staticmethod
-    def calculate_host_ips(subnet):
-        network = ipaddress.ip_network(subnet, strict=False)
-        host_ips = [str(ip) for ip in network.hosts()]
-        return host_ips
+
+def continue_anyways():
+    '''
+    A little function that propmts the user to continue anyway. Returns true/false. 
+    '''
+    if input("Enter 'y' to continue execution (high chance of failure), or any other key to exit: ") == "y":
+        return True
+    else:
+        return False
+
+def calculate_host_ips(subnet):
+    network = ipaddress.ip_network(subnet, strict=False)
+    host_ips = [str(ip) for ip in network.hosts()]
+    return host_ips
 
 # Note, No performance hit with lookups, as the lookups take longer than the url requests lol
 #idea: dict lookup for already found MACs to save requests - was being picky when tried
-def mac_lookup(mac):
+def mac_lookup(mac, mac_list=""):
+    print("MACLOOKUP") 
     try:
-        url = "http://api.macvendors.com/" + str(mac).replace(" ","")
-        response = urllib.request.urlopen(url)
-        mac_vendor = response.read().decode('utf-8')
-        return mac_vendor
+        print(mac)
+
+        for i in mac_list:
+            ## the mac we are looking up
+            mac_to_lookup = mac.replace(":", "")[:6].upper()
+            ## first 6 of mac to compare against
+            mac_in_list = i[6:]
+
+            if mac_to_lookup == mac_in_list:
+                # this is the vendor name, 6 chars for the mac, 1 for a space
+                return mac_in_list[:7]
 
     except Exception as e:
-        print("{} Error with MAC Vendor lookup: {}".format(error_block, e))
-        return "Error"
+        print(e)
+        return "placeholder-exception"
+
+
+
+def mac_load():
+    try:
+        url = "https://gist.githubusercontent.com/aallan/b4bb86db86079509e6159810ae9bd3e4/raw/846ae1b646ab0f4d646af9115e47365f4118e5f6/mac-vendor.txt"
+        response = urllib.request.urlopen(url)
+        return response
+    except Exception as e:
+        print(e)
     
 
 def json_build(ip="", mac="",vendor=""):
@@ -271,9 +293,9 @@ if __name__ == "__main__":
                         epilog='-- Designed by ryanq.47 --')
     parser.add_argument('-d', '--debug', help="Prints debug information", action="store_true") 
     parser.add_argument('-t', '--targetsubnet', help="The target you wish to scan. Can be an IP, FQDN, or hostname. Example: 'qs-portscan -t 192.168.0.1'", required=True, default="127.0.0.1/24") 
-    parser.add_argument('-p', '--protocol', help="The method/protocol(s) to use to scan. Enter one, or multiple, i.e.: '-p arp', -p arp icmp", type=str, nargs='+') 
+    parser.add_argument('-p', '--protocol', help="The method/protocol(s) to use to scan. Enter one, or multiple, i.e.: '-p arp', -p arp icmp", type=str, nargs='+', default=["arp"]) 
     parser.add_argument('-l', '--library', help="The library you want to use to conduct network operations", default="scapy") 
-    parser.add_argument('-i', '--interface', help="The interface you want to scan on.", required=False) 
+    parser.add_argument('-i', '--interface', help="The interface you want to scan on.", required=False, default = "") 
     parser.add_argument('-o', '--output', help="Output data in JSON. Add a name after for a filename", required=False, default="qs-netscan-output.json") 
     parser.add_argument('--nolookups', help="Don't do any internet based lookups (i.e. MAC vendor lookups)", required=False,action="store_false") 
     parser.add_argument('--sendto', help="Send the results (in JSON) to a listener/server/host. Ex: --sendto 127.0.0.1:8080", required=False) 
@@ -295,7 +317,7 @@ if __name__ == "__main__":
         
         except ImportError as ie:
             print("{} Warning, scapy import error.\n{} Error Message: {}".format(error_block, error_block, ie))
-            if QsUtils.continue_anyways():
+            if continue_anyways():
                 pass
             else:
                 exit()
@@ -321,10 +343,6 @@ if __name__ == "__main__":
             ##scapyclass()
     
     try:
-        '''
-        json_build(ip="123.254.11.35", mac="00:11:22:33:44:55",vendor="RQ Industrial")
-        json_build(ip="123.254.11.31", mac="00:11:22:33:44:56",vendor="RQ Industrial")
-        json_write_to_file(item_to_write=json_out_dict)'''
         scanner.scan()
 
         if args.output:
@@ -332,6 +350,9 @@ if __name__ == "__main__":
 
         if args.sendto:
             QsUtils.send_to(args.sendto)
+
+        #if not args.nolookup:
+        #    mac_list = mac_load()
 
     except PermissionError as pe:
         print("{} Permission error, may need elevated priveleges. \n{} Error Message: {}".format(error_block,error_block,pe))
