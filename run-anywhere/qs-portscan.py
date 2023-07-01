@@ -4,8 +4,10 @@ from telnetlib import Telnet
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, wait
 import time
 
-error_block = "[!]"
-operation_block = "[*]"
+error_block = "[!]" # presents option to contiue
+operation_block = "[*]" # standard operation
+unrecov_error_block = "[X]" # unrecoverable, no option to continue
+input_block = "[>]" # for getting  user input
 
 
 '''
@@ -93,6 +95,9 @@ class PortScan:
         #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #sock.setblocking(False)
 
+        if "/" in self.target:
+            ip_list = QsUtils.calculate_host_ips(self.target)
+
         '''
         Cool idea: Could make 4 socket objects, and rotate which gets used. would eliminate overhead
         of creating a new sock each time
@@ -100,21 +105,24 @@ class PortScan:
         '''
         if self.process_allocation == "processpool":
             with ProcessPoolExecutor() as executor:
-                futures = [executor.submit(self._socket_scan_implementation, self.target, port, self.timeout) for port in self.ports]
+                for i in ip_list:
+                    futures = [executor.submit(self._socket_scan_implementation, i, port, self.timeout) for port in self.ports]
                 #wait(futures, timeout=2)
         elif self.process_allocation == "threadpool":
             with ThreadPoolExecutor() as executor:
-                futures = [executor.submit(self._socket_scan_implementation, self.target, port, self.timeout) for port in self.ports]
+                for i in ip_list:
+                    futures = [executor.submit(self._socket_scan_implementation, i, port, self.timeout) for port in self.ports]
                 #wait(futures, timeout=2)   
         elif self.process_allocation == "singleprocess" or self.process_allocation == "single":
             print("{} Warning! Using single process mode. This will take longer than usual, and is included only for compatibility reasons".format(error_block))
-            for port_to_scan in self.ports:
-                self._socket_scan_implementation(ip=self.target, port=port_to_scan, timeout=self.timeout)
+            for i in ip_list:
+                for port_to_scan in self.ports:
+                    self._socket_scan_implementation(ip=i, port=port_to_scan, timeout=self.timeout)
         else:
-            print("Invalid process_allocation option: {}".format(self.process_allocation))
+            print("{} Invalid process_allocation option: {}".format(unrecov_error_block, self.process_allocation))
             exit()
 
-        print("Done!")
+        print("{} Done!".format(operation_block))
 
     def _socket_scan_implementation(self, ip="127.0.0.1", port=1, timeout=.5):
         try:
@@ -122,8 +130,8 @@ class PortScan:
             # fix here: https://stackoverflow.com/questions/54437148/python-socket-connect-an-invalid-argument-was-supplied-oserror-winerror
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(timeout)
-            sock.connect(("127.0.0.1", port))
-            print("{}:{} is open".format(self.target, port))
+            sock.connect((ip, port))
+            print("{} {}:{} is open".format(operation_block, ip, port))
         
         except (ConnectionError, ConnectionRefusedError, TimeoutError) as e:
             pass
@@ -132,7 +140,7 @@ class PortScan:
             print("{}:{} reset. Test Manually".format(self.target, port))
         
         except Exception as e:
-            print(e)
+            print("{} Error: {}".format(error_block, e))
 
     def telnet_scan(self):
         '''
@@ -154,22 +162,31 @@ class PortScan:
         ##ThreadPoolExecutor: - is faster, uses one core, but multiple processes
         #ProcessPoolExecutor()#, literally a drop in replacement. Multicore, a (fair, about 2/3rds) bit slower due to overhead for IO tasks
 
+        if "/" in self.target:
+            ip_list = QsUtils.calculate_host_ips(self.target)
+
         if self.process_allocation == "processpool":
             with ProcessPoolExecutor() as executor:
-                futures = [executor.submit(self._telnet_scan_implementation, self.target, port) for port in self.ports]
+                for i in ip_list:
+                    futures = [executor.submit(self._telnet_scan_implementation, i, port) for port in self.ports]
                 #wait(futures, timeout=2)
+
+        ## default
         elif self.process_allocation == "threadpool":
             with ThreadPoolExecutor() as executor:
-                futures = [executor.submit(self._telnet_scan_implementation, self.target, port) for port in self.ports]
-                #wait(futures, timeout=2)   
+                for i in ip_list:
+                    futures = [executor.submit(self._telnet_scan_implementation, i, port) for port in self.ports]
+                #wait(futures, timeout=2)
+                
         elif self.process_allocation == "singleprocess" or self.process_allocation == "single":
             print("{} Warning! Using single process mode. This will take longer than usual, and is included only for compatability reasons".format(error_block))
-            for port_to_scan in self.ports:
-                self._telnet_scan_implementation(ip=self.target, port=port_to_scan)
+            for  i in ip_list:
+                for port_to_scan in self.ports:
+                    self._telnet_scan_implementation(ip=i, port=port_to_scan)
         else:
             print("Invalid process_allocation option: {}".format(self.process_allocation))
 
-        print("Done!")
+        print("{} Done!".format(operation_block))
 
 
     def _telnet_scan_implementation(self, ip="", port=1):
@@ -182,7 +199,7 @@ class PortScan:
             #with Telnet(ip, port, timeout_time) as tn:
             tn = Telnet(host=ip, port=port, timeout=self.timeout)
             tn.close()
-            print("{}:{} is open".format(self.target, port))
+            print("{} {}:{} is open".format(operation_block, ip, port))
             return True
         # it's okay to ignore these, they just catch a bad/refused connection
         except (ConnectionRefusedError, TimeoutError) as cre:
@@ -232,6 +249,48 @@ class PortScan:
         return port_list
     
 
+
+class QsUtils:
+    '''
+    A static class used for tools accross the QS scripts
+    '''
+
+    @staticmethod
+    def send_to(dest):
+        '''
+        Send data to a server/other PC. Handy for getting data out
+        '''
+        try:
+            ip, port = dest.split(':')
+        
+        except Exception as e:
+            print("{} Error occured when getting IP & Port for sending data: {}".format(error_block, e))
+
+        # the algorithms send func
+
+    @staticmethod
+    def continue_anyways():
+        '''
+        A little function that propmts the user to continue anyway. Returns true/false. 
+        '''
+        if input("Enter 'y' to continue execution (high chance of failure), or any other key to exit: ") == "y":
+            return True
+        else:
+            return False
+    @staticmethod
+    def calculate_host_ips(subnet):
+        try:
+            import ipaddress
+        except ImportError as ie:
+            print("{} 'ipaddress' module could not be imported, python 3.3 or higher is needed: {}".format(error_block, ie))
+            return ""
+        except Exception as e:
+            print("{} Error: {}".format(unrecov_error_block, e))
+            #exit? not sure
+        
+        network = ipaddress.ip_network(subnet, strict=False)
+        host_ips = [str(ip) for ip in network.hosts()]
+        return host_ips
 
 if __name__ == "__main__":
     '''Parser is down here for one-off runs, as this script can be imported & used in other pyprojects'''
