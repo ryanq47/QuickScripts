@@ -1,9 +1,11 @@
+#!/usr/bin/python3
 import argparse
 import time
 
 error_block = "[!]" # presents option to contiue
 operation_block = "[*]" # standard operation
 unrecov_error_block = "[X]" # unrecoverable, no option to continue
+input_block = "[>]" # for getting  user input
 
 '''
 Little decorator note (still a newer concept to me), instead of running the function that the @ is above, it 
@@ -22,10 +24,9 @@ def execution_time(func):
 
 class YTDL:
     def __init__(self, url, savelocation, method):
-        if not self._valuecheck(url, savelocation):
+        if not self._valuecheck(url, savelocation, method):
             exit()
         
-
         self.url = url
         self.savelocation = savelocation
         self.method = method
@@ -34,7 +35,7 @@ class YTDL:
         return "=== Details URL: {} SaveLocation: {} Method: {}===".format(self.url, self.savelocation, self.method)
 
 
-    def _valuecheck(self, url, savelocation):
+    def _valuecheck(self, url, savelocation, method):
         '''
         This method is a double check that items are the right types/values. if running as a one off, argparse checks as well.
         This is mainly for bulletproofing/making it apparent where you screwed up.
@@ -48,12 +49,17 @@ class YTDL:
             print("{} savelocation parameter is the incorrect type: {}, {}. Expected a string.".format(error_block, savelocation, type(savelocation)))
             if not QsUtils.continue_anyways():
                 return False    
+            
+        if not isinstance(method, str) or method not in ["advanced", "simple"]:
+            print("{} method parameter is the incorrect type or value: {}, {}. Expected a string, with a value of 'advanced', or 'simple'.".format(error_block, method, type(method)))
+            if not QsUtils.continue_anyways():
+                return False    
                 
         return True
     
+    @execution_time
     def main(self):
-        print("Main called")
-
+        print("{} Starting qs-ytdl".format(operation_block))
         ## add error check in _valuecheck with these 2 values
         if self.method == "simple":
             self.simple_download()
@@ -75,24 +81,27 @@ class YTDL:
 
         except Exception as e:
             print("{} Error occured while downloading video: {}".format(unrecov_error_block, e))
+            exit()
 
         print("{} Video downloaded successfully to: {}".format(operation_block, self.savelocation))
 
     def advanced_download(self):
         try:
-            print("Please select the stream you would like to download (may take a second to load...)")
+            print("{} Please select the stream you would like to download (may take a second to load...)".format(operation_block))
 
             yt = YouTube(self.url)
             streams = yt.streams.filter(file_extension='mp4')
             for stream in streams:
                 print(stream)            
                 
-            itag = str(input("Enter itag #:"))
+            itag = str(input("{} Enter itag #: ".format(input_block)))
+            print("{} Downloading...".format(operation_block))
             stream = yt.streams.get_by_itag(itag)
             stream.download(timeout=None)
         
         except Exception as e:
             print("{} Error occured while downloading video: {}".format(unrecov_error_block, e))
+            exit()
 
         print("{} Video downloaded successfully to: {}".format(operation_block, self.savelocation))
 
@@ -146,7 +155,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--savelocation', help="The location you want to save the video in. Default is current dir'", type=str, default="./") 
     parser.add_argument('-m', '--method', help="'advanced' or 'simple' download. Advanced lets you choose specifics. Default is simple", default="simple") 
 
-    parser.add_argument('-d', '--debug', help="Print debug information") 
+    parser.add_argument('-d', '--debug', help="Print debug information", action="store_true") 
 
     args = parser.parse_args()
 
