@@ -65,6 +65,28 @@ class QsUtils:
 
         # the algorithms send func
 
+    @staticmethod
+    def continue_anyways():
+        '''
+        A little function that propmts the user to continue anyway. Returns true/false. 
+        '''
+        if input("Enter 'y' to continue execution (high chance of failure), or any other key to exit: ") == "y":
+            return True
+        else:
+            return False
+    @staticmethod
+    def calculate_host_ips(subnet):
+        try:
+            import ipaddress
+        except Exception as e:
+            print("{} 'ipaddress' module could not be imported, python 3.3 or higher is needed: {}".format(error_block, e))
+            return ""
+            #exit? not sure
+        
+        network = ipaddress.ip_network(subnet, strict=False)
+        host_ips = [str(ip) for ip in network.hosts()]
+        return host_ips
+
 
 if __name__ == "__main__":
     '''Parser is down here for one-off runs, as this script can be imported & used in other pyprojects'''

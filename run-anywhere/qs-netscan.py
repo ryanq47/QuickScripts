@@ -46,7 +46,7 @@ class ScapyScanner:
         This method is a double check that items are the right types/values. if running as a one off, argparse checks as well.
         This is mainly for bulletproofing/making it apparent where you screwed up.
 
-        When possble, provide the user the chance to override the errors with the continue_anyways function
+        When possble, provide the user the chance to override the errors with the QsUtils.continue_anyways function
         '''
         #self.VAR = str
 
@@ -63,7 +63,7 @@ class ScapyScanner:
             #checking for an interface arg in scans that require an interface. Note, None is not a str
             elif interface == None and protocol == "arp":
                 print("{} Interface is 'None'. An interface is required for ARP scans.".format(error_block))
-                if not continue_anyways():
+                if not QsUtils.continue_anyways():
                     return False
             else:
                 print("{} interface parameter is the incorrect type: {}, {}. Expected a str".format(error_block, interface, type(interface)))
@@ -84,7 +84,7 @@ class ScapyScanner:
     def scan(self):
         # generate IP list
 
-        ip_list = calculate_host_ips(self.target_subnet)
+        ip_list = QsUtils.calculate_host_ips(self.target_subnet)
 
         with ProcessPoolExecutor() as executor:
             for ip in ip_list:
@@ -213,20 +213,20 @@ class QsUtils:
 
         # the algorithms send func
 
-
-def continue_anyways():
-    '''
-    A little function that propmts the user to continue anyway. Returns true/false. 
-    '''
-    if input("Enter 'y' to continue execution (high chance of failure), or any other key to exit: ") == "y":
-        return True
-    else:
-        return False
-
-def calculate_host_ips(subnet):
-    network = ipaddress.ip_network(subnet, strict=False)
-    host_ips = [str(ip) for ip in network.hosts()]
-    return host_ips
+    @staticmethod
+    def continue_anyways():
+        '''
+        A little function that propmts the user to continue anyway. Returns true/false. 
+        '''
+        if input("Enter 'y' to continue execution (high chance of failure), or any other key to exit: ") == "y":
+            return True
+        else:
+            return False
+    @staticmethod
+    def calculate_host_ips(subnet):
+        network = ipaddress.ip_network(subnet, strict=False)
+        host_ips = [str(ip) for ip in network.hosts()]
+        return host_ips
 
 # Note, No performance hit with lookups, as the lookups take longer than the url requests lol
 #idea: dict lookup for already found MACs to save requests - was being picky when tried
@@ -295,7 +295,7 @@ if __name__ == "__main__":
         
         except ImportError as ie:
             print("{} Warning, scapy import error.\n{} Error Message: {}".format(error_block, error_block, ie))
-            if continue_anyways():
+            if QsUtils.continue_anyways():
                 pass
             else:
                 exit()
