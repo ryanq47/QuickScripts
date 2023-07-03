@@ -5,8 +5,10 @@ import ipaddress
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, wait
 import urllib.request
 
-error_block = "[!]"
-operation_block = "[*]"
+error_block = "[!]" # presents option to contiue
+operation_block = "[*]" # standard operation
+unrecov_error_block = "[X]" # unrecoverable, no option to continue
+input_block = "[>]" # for getting  user input
 
 
 ## init this here
@@ -41,8 +43,8 @@ class ScapyScanner:
         self.mac_list = ""
 
 
-        '''if self.lookups:
-            self.mac_list = mac_load()'''
+        if self.lookups:
+            self.mac_list = mac_load()
 
     def __str__(self):
         return "=== Details: Target Subnet: {}, Library: Scapy, Protocol: {}, interface: {} ===".format(self.target_subnet,self.protocol, self.interface)
@@ -140,11 +142,11 @@ class ScapyScanner:
             # Print the discovered devices
             for device in devices:
                 ## doing this as these values a re used a few times & I don't wanna call  mac_lookup more than once
-                temp_ip, temp_mac, temp_vendor = device['IP'], device['MAC'], mac_lookup(device['MAC']) if self.lookups else 'Disabled'
+                temp_ip, temp_mac, temp_vendor = device['IP'], device['MAC'], mac_lookup(device['MAC'], self.mac_list) if self.lookups else 'Disabled'
 
                 ## change to .format str
                 #print(f"IP: {temp_ip}\tMAC: {temp_mac} \tVENDOR: {mac_lookup(temp_vendor) if self.lookups else 'Disabled'}")
-                print("IP: {}\tMAC: {}\tVENDOR {}".format(temp_ip, temp_mac, temp_vendor))
+                print("{}IP:  {}\tMAC:  {}\tVENDOR:  {}".format(operation_block, temp_ip, temp_mac, temp_vendor))
                 json_build(ip=temp_ip,mac=temp_mac,vendor=temp_vendor)
 
         except Exception as e:
@@ -235,33 +237,44 @@ def calculate_host_ips(subnet):
 # Note, No performance hit with lookups, as the lookups take longer than the url requests lol
 #idea: dict lookup for already found MACs to save requests - was being picky when tried
 def mac_lookup(mac, mac_list=""):
-    print("MACLOOKUP") 
     try:
-        print(mac)
-
-        for i in mac_list:
+        # .split to get each line, isntead of individual characters
+        for i in mac_list.split("\n"):
             ## the mac we are looking up
             mac_to_lookup = mac.replace(":", "")[:6].upper()
             ## first 6 of mac to compare against
-            mac_in_list = i[6:]
+            mac_in_list = i[:6].upper()
 
             if mac_to_lookup == mac_in_list:
                 # this is the vendor name, 6 chars for the mac, 1 for a space
-                return mac_in_list[:7]
+                return i[7:]
+            
+            #2nd character in mac address tells if it's randomized or not
+            if mac_to_lookup[1].upper() in ["2","E","6"]:
+                return "Randomized MAC"
 
     except Exception as e:
         print(e)
+        print("BROKEn")
         return "placeholder-exception"
 
 
 
 def mac_load():
     try:
-        url = "https://gist.githubusercontent.com/aallan/b4bb86db86079509e6159810ae9bd3e4/raw/846ae1b646ab0f4d646af9115e47365f4118e5f6/mac-vendor.txt"
+        print("{} Pulling MAC list...".format(operation_block))
+        url = "https://tinyurl.com/bdcynbhn"
+        #url = "https://gist.githubusercontent.com/aallan/b4bb86db86079509e6159810ae9bd3e4/raw/846ae1b646ab0f4d646af9115e47365f4118e5f6/mac-vendor.txt"
         response = urllib.request.urlopen(url)
-        return response
+        if response.getcode() == 200:
+        #print(response.read().decode())
+            #decoding here, so if it does error out, it gets caught before  printing a successful download
+            decoded_response = response.read().decode()
+            print("{} Successfully downloaded & loaded MAC list".format(operation_block))
+            return decoded_response
+
     except Exception as e:
-        print(e)
+        exit("{} Error pulling MAC list: {}\nRun me with --nolookup".format(unrecov_error_block,e))
     
 
 def json_build(ip="", mac="",vendor=""):
