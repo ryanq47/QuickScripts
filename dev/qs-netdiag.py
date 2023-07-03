@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import socket
 import argparse
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, wait
+#from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, wait
 import time
 
 error_block = "[!]" # presents option to contiue
@@ -25,10 +25,10 @@ def execution_time(func):
         return result
     return wrapper
 
-class CLASS:
-    def __init__(self, ARGS):
-        if not self._valuecheck(ARGS):
-            exit()
+class NetDiag:
+    def __init__(self):
+        '''if not self._valuecheck(ARGS):
+            exit()'''
         pass
 
     def __str__(self):
@@ -43,12 +43,41 @@ class CLASS:
         #self.VAR = str
 
 
-        if not isinstance(VAR, str):
+        if not isinstance("VAR", str):
             print("{} target parameter is the incorrect type: {}, {}. Expected a string.".format(error_block, VAR, type(VAR)))
             if not QsUtils.continue_anyways():
                 return False
         
         return True
+
+
+    def main(self):
+        #mockup
+        self._dns_lookup()
+        self._dns_lookup_reverse()
+        self._icmp_gateway()
+        self._system_net_info()
+
+        print("DNS: OK | GATEWAY: reachable | Other: OK | Other: FAIL")
+
+
+    def _dns_lookup(self):
+        print("{} DNS Query 8.8.8.8 -> google.com Successful".format(operation_block))
+        pass
+
+    def _dns_lookup_reverse(self):
+        print("{} DNS Query google.com -> 8.8.8.8 Successful".format(operation_block))
+
+        pass
+
+    def _icmp_gateway(self):
+        print("{} ICMP Message -> 192.168.0.1 [GATEWAY] successful".format(operation_block))
+
+        pass
+
+    def _system_net_info(self):
+        print("{} IP: 127.0.0.1 MAC: 00:00:00:00:00:00 Interface: eth0".format(operation_block))
+        pass
 
 
 class QsUtils:
@@ -99,8 +128,10 @@ if __name__ == "__main__":
                         description='The QuickScripts portscanner. No non-standard dependencies required',
                         epilog='-- Designed by ryanq.47 --')
 
-    parser.add_argument('-t', '--target', help="The target you wish to scan. Can be an IP, FQDN, or hostname. Example: 'qs-portscan -t 192.168.0.1'", required=True) 
+    #target prolly not needed
+    #parser.add_argument('-t', '--target', help="The target you wish to scan. Can be an IP, FQDN, or hostname. Example: 'qs-portscan -t 192.168.0.1'", required=True) 
     parser.add_argument('-d', '--debug', help="Print debug information", action="store_true") 
+    #interface arg, to choose which interface to use
 
     args = parser.parse_args()
 
@@ -110,22 +141,11 @@ if __name__ == "__main__":
         # the exit makes sure the class instances don't get created/cause any errors with no values
         exit()
 
-    scanner = CLASS(
+    netdiag = NetDiag(
     )
 
     # Logic tree
     if args.debug:
-        print(scanner)
+        print(netdiag)
 
-
-    if args.method == "telnet":
-        if not args.singleprocess:
-            scanner.telnet_multiprocess_scan()
-        else:
-            scanner.telnet_scan()
-
-    elif args.method == "socket":
-        if not args.singleprocess:
-            scanner.socket_multiprocess_scan()
-        else:
-            scanner.socket_scan()
+    netdiag.main()
