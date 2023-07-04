@@ -4,13 +4,16 @@ import argparse
 #from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, wait
 import time
 from scapy.all import *
+## makes the warnings quiet
+logging.getLogger("scapy").setLevel(logging.CRITICAL)
 
 error_block = "[!]" # presents option to contiue
 operation_block = "[*]" # standard operation
 unrecov_error_block = "[X]" # unrecoverable, no option to continue
 input_block = "[>]" # for getting  user input
 
-
+#bandaid fix for decorator debug print
+qs_debug = False
 '''
 Little decorator note (still a newer concept to me), instead of running the function that the @ is above, it 
 tells python to run the @function instead, and calls the function under the decorator in the process
@@ -22,7 +25,8 @@ def execution_time(func):
         result = func(*args, **kwargs)
         end_time = time.time()
         execution_time = end_time - start_time
-        print(f"Execution time: {execution_time:.4f} seconds")
+        ## wasn't sure how to pass a var here yet, just using a glbal debug var
+        print(f"\t{execution_time:.4f} seconds") if qs_debug else None
         return result
     return wrapper
 
@@ -33,12 +37,12 @@ class NetDiag:
         
         self.debug = debug
         
-        self.local_ip = ""
-        self.hostname = ""
-        self.gateway = ""
+        self.local_ip = "EMPTY"
+        self.hostname = "EMPTY"
+        self.gateway = "EMPTY"
         
         #IP's to ping. Usually gateway, loopback, and any others
-        self.icmp_ip = ["127.0.0.1", self.gateway, self.local_ip]
+        self.icmp_ip = ["192.168.0.1", "127.0.0.1", self.gateway, self.local_ip]
         
         ## domains to look up
         # 3 seperate domains, note, netflix may be blocked
@@ -68,6 +72,8 @@ class NetDiag:
 
 
     def main(self):
+        print("{} Starting qs-netdiag".format(operation_block)) if self.debug else print("{} Starting qs-netdiag, run with -d for detailed output. This may take a sec...".format(operation_block))
+
         #mockup
         dns_passed = 0
         dns_total = 0
@@ -86,24 +92,29 @@ class NetDiag:
 
         ## ICMP
         for icmp_ip in self.icmp_ip:
-            self._icmp_gateway(ip=icmp_ip, debug = self.debug)
+            icmp_total = icmp_total + 1
+            if self._icmp_gateway(ip=icmp_ip, debug = self.debug):
+                icmp_passed = icmp_passed + 1
 
-        print("{} ICMP: {}/{} ({:.2f}%) tests passed.".format(operation_block, dns_passed, dns_total, (dns_passed/dns_total) * 100))
+        print("{} ICMP: {}/{} ({:.2f}%) tests passed.".format(operation_block, icmp_passed, icmp_total, (icmp_passed/icmp_total) * 100))
 
 
         self._system_net_info()
 
-        print("DNS: OK | GATEWAY: reachable | Other: OK | Other: FAIL")
+        ## DHCP 
+        self._dhcp_renew()
 
+        #print("DNS: OK | GATEWAY: reachable | Other: OK | Other: FAIL")
 
-    def _dns_lookup(self, dns_server, domain, debug=False):
+    @execution_time
+    def _dns_lookup(self, dns_server, domain, debug=False, timeout=5):
         ## chatgpt modified mockup - NEED to format these into correct tabs n stuff
         # Craft a DNS query packet
         try:
             dns_query = IP(dst=dns_server) / UDP() / DNS(rd=1, qd=DNSQR(qname=domain))
 
             # Send the packet and capture the response
-            response = sr1(dns_query, verbose=False)
+            response = sr1(dns_query, verbose=False, timeout=timeout)
 
             # Check if a response was received
             if response:
@@ -112,14 +123,14 @@ class NetDiag:
                 if answers:
                     for answer in answers:
                         if answer.type == 1:  # Only consider A records
-                            print("{} DNS Query {} -> {}: {}".format(operation_block, domain, dns_server, answer.rdata)) if debug else None
+                            print("{} DNS Query {}\t -> \t{}: {}\t".format(operation_block, domain, dns_server, answer.rdata), end="") if debug else None
                             return True
                             ## do a normal lookup as well if this is successful
                 else:
-                    print("{} DNS Query {} -> {}: No Answers receieved".format(error_block, domain, dns_server)) if debug else None
+                    print("{} DNS Query {}\t -> \t{}: No Answers receieved".format(error_block, domain, dns_server), end="") if debug else None
 
             else:
-                print("{} DNS Query {} -> {}: No Response receieved".format(error_block, domain, dns_server)) if debug else None
+                print("{} DNS Query {}\t -> \t{}: No Response receieved".format(error_block, domain, dns_server), end="") if debug else None
 
         except Exception as e:
             print("{} DNS error: {}".format(unrecov_error_block, e))
@@ -143,14 +154,17 @@ class NetDiag:
             
             if result is not None:
                 #print(f"ICMP response received from {result[IP].src}")
-                print("IP: {}\tPKT: {}".format(result[IP].src, result.summary()))
+                #print("IP: {}\tPKT: {}".format(result[IP].src, result.summary())) if debug else None
+                print("{} ICMP \t -> \t{}: Success!".format(operation_block, result[IP].src)) if debug else None
+                return True
 
             else:
-                #print(result)
-                pass
+                print("{} ICMP \t -> \t{}: No Response".format(error_block, ip)) if debug else None
+                return False
 
         except Exception as e:
-            print("{} ICMP error occured: {}".format(error_block, e)) if debug else None
+            print("{} ICMP err (ip: {}) \t -> : {}".format(unrecov_error_block, ip ,e)) if debug else None
+            return False
 
         #print("{} ICMP Message -> 192.168.0.1 [GATEWAY] successful".format(operation_block))
 
@@ -161,6 +175,11 @@ class NetDiag:
         self.hostname = socket.gethostname()
 
         #print("{} IP: {} HOST: {} MAC: {} Interface: {}".format(operation_block, self.local_ip, self.hostname, "__", "__"))
+
+    def _dhcp_renew(self):
+        print("NOT IMPLEMENTED> IS TEST")
+        print("{} DHCP Renewal \t -> \t{}: Success!".format(operation_block, "DATA")) if debug else None
+
 
 class QsUtils:
     '''
@@ -207,7 +226,7 @@ if __name__ == "__main__":
     '''Parser is down here for one-off runs, as this script can be imported & used in other pyprojects'''
     parser = argparse.ArgumentParser(
                         prog='qs-portscan',
-                        description='The QuickScripts portscanner. No non-standard dependencies required',
+                        description='The QuickScripts netdiag tool. Meant to help you quickly find where your connection is fucked up. Performs a series of common DNS lookups, ICMP messages, and ___',
                         epilog='-- Designed by ryanq.47 --')
 
     #target prolly not needed
@@ -220,10 +239,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # display -h/help if no flags are supplied
-    if not any(vars(args).values()):
+    '''if not any(vars(args).values()):
         parser.print_help()
         # the exit makes sure the class instances don't get created/cause any errors with no values
-        exit()
+        exit()'''
 
     netdiag = NetDiag(
         debug = args.debug
@@ -231,6 +250,20 @@ if __name__ == "__main__":
 
     # Logic tree
     if args.debug:
+        qs_debug = True
         print(netdiag)
 
     netdiag.main()
+
+
+    '''
+    Notes/todo
+
+    add timeout option & implement.
+
+    re learn DHCP and see how it can be added here
+
+    on keyboard interupt, need to kill everything
+    
+    
+    '''
