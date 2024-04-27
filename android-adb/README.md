@@ -10,6 +10,6 @@ A few things are assumed before running these tools:
 #### Files
 All useful files are stored in the 'data' directory. Each tool has its own folder. 
 
-Ex: tmp/adb_pull_databases/<\data\>
+Ex: tmp/adb_pull_databases/<data\>
 
 Note, there is no way to distigusih between device data in here, aka if you pull the DB's on 2 different devices, the 2nd will overwrite the first. 
