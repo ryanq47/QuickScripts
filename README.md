@@ -9,6 +9,4 @@ Folders:
 'android-adb': A set of ADB scripts for things
 
 
-This is incredibly handy for systems with no internet, or ones with ancient python versions.  
-
  
