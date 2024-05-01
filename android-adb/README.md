@@ -66,4 +66,4 @@ Arguments:
 Tries to elevate the current ADB shell session into a root one. Most android devices don't have a password for root access.
 
 ## adb_enum.py
-Runs basic Enum on the device. Automatically tries to elevate to root.
+Runs basic Enum on the device, outputs on screen and saves to data/adb_enum/dev_ip:dev_port. Automatically tries to elevate to root.
