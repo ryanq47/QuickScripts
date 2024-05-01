@@ -15,7 +15,7 @@ class ADBDatabasePuller:
         if self.device:
             print(f"[*] Successful connection to server: {host}:{port}")
             self.device_name = self.device.get_serial_no()
-            print(f"[(⌐■_■)] Connected to device with serial: {self.device_name}")
+            print(f"[•_•] Connected to device with serial: {self.device_name}")
         else:
             print(f"[(┛◉Д◉)┛┻━┻] Failed to connect to server, run 'adb start-server': {host}:{port}")
             sys.exit(1)  # Exit if connection is not successful
@@ -64,50 +64,14 @@ class ADBDatabasePuller:
         print("[(┛◉Д◉)┛┻━┻] Timeout: Device did not reconnect in the expected time.")
         return False
 
-    def find_database_files(self):
-        """Find all .db files on the device and return a list."""
-        if self.device is None:
-            print("[(┛◉Д◉)┛┻━┻] No device is connected.")
-            return []
-        result = self.device.shell("find /data/data/ -type f -name '*.db'")
-        return result.splitlines()
+    ## Custom functions for actions here
+    #def myfunc(self):
+        #result = self.device.shell("find /data/data/ -type f -name '*.db'")
 
-    def setup_directories(self, base_dir):
-        """Ensure the base directory for database storage exists."""
-        os.makedirs(base_dir, exist_ok=True)
-
-    def pull_databases(self):
-        """Pull database files from the device."""
-        if not self.restart_adb_as_root():
-            return
-
-        storagedir = f"data/adb_pull_devices/{self.device_name}/"
-        self.setup_directories(storagedir)
-        db_files = self.find_database_files()
-        if not db_files:
-            print("[(┛◉Д◉)┛┻━┻] No database files found.")
-            return
-
-        print(f"{len(db_files)} DB files found!")
-        num = 0
-
-        for db_file in db_files:
-            num += 1
-            db_file = db_file.strip()
-            if db_file:
-                local_dir = os.path.join(storagedir, os.path.dirname(db_file[1:]))
-                local_file_path = os.path.join(local_dir, os.path.basename(db_file))
-                os.makedirs(local_dir, exist_ok=True)
-            
-                print(f"[( ͡° ͜ʖ ͡°)] ({num}/{len(db_files)}) Pulling: {db_file}")
-                try:
-                    self.device.pull(db_file, local_file_path)
-                except Exception as e:
-                    print(f"[(┛◉Д◉)┛┻━┻] Failed to pull {db_file}: {str(e)}")
 
 def main():
     adb_puller = ADBDatabasePuller()
-    adb_puller.pull_databases()
+    #adb_puller.myfunc()
 
 if __name__ == "__main__":
     main()
