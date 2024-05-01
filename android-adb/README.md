@@ -31,10 +31,10 @@ python/bash tool_of_choice
 
 ## Tools:
 
-### adb_pull_databases.py
+## adb_pull_databases.py
 Pulls all the databases in /data/data/ on the Device. Saves in: data/adb_pull_device/dev_ip:dev_port/. use with `extract_data_from_db.py` for quick parsing of resulting data
 
-### extract_data_from_db.py
+## extract_data_from_db.py
 Pulls sensitive data from the extracted databases. Operates off the following keywords:
 
 ```
@@ -46,7 +46,7 @@ Pulls sensitive data from the extracted databases. Operates off the following ke
     'wallet', 'account_number', 'account_info', 'location', 'longitude', 'latitude'
 ```
 
-### adb_restart.sh - Linux Only
+## adb_restart.sh - Linux Only
 Restart the local adb server. 
 
 ## adb_speedtest.py
@@ -56,7 +56,7 @@ Runs a speedtest on the target. Defaults to 10 MB random file upload/download.
 Arguments:
  - `--Filesize`: Size (in MB) of file to upload/download
 
-### adb_take_screenshot_loop.py
+## adb_take_screenshot_loop.py
 Takes a screenshot every ~5 seconds on the device, and opens in the default application. Saves the images in  data/adb_take_screenshot_loop/dev_ip:dev_port/
 
 Arguments:
