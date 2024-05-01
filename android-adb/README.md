@@ -61,3 +61,9 @@ Takes a screenshot every ~5 seconds on the device, and opens in the default appl
 
 Arguments:
  - `--display`: Display images on screen after a successful screenshot
+
+## adb_elevate_privs.py
+Tries to elevate the current ADB shell session into a root one. Most android devices don't have a password for root access.
+
+## adb_enum.py
+Runs basic Enum on the device. Automatically tries to elevate to root.
