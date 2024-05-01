@@ -11,13 +11,19 @@ All useful files are stored in the 'data' directory under the Device IP & Tool n
 
 Ex: data/adb_pull_device/1.2.3.4:5555/
 
+## Installation
+
+```
+python3 -m pip install -r requirements.txt
+
+```
 
 ## Typical Usage:
 
 ```
 ./adb_restart.sh (or manaully do this)
 
-adb connect ip
+adb connect ip_of_target
 
 python/bash tool_of_choice
 

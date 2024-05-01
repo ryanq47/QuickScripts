@@ -13,11 +13,13 @@ import threading
 def parse_args():
     parser = argparse.ArgumentParser(description='Take and optionally display screenshots from an ADB-connected device.')
     parser.add_argument('--display', action='store_true', help='Display each screenshot using the default image viewer.')
+    parser.add_argument('--elevate', action='store_true', help='Attempt to restart ADP as root (passwordless)')
     return parser.parse_args()
 
 class ADBScreenshotTaker:
-    def __init__(self, host="127.0.0.1", port=5037, display=False):
+    def __init__(self, host="127.0.0.1", port=5037, display=False, elevate=False):
         self.display = display
+        self.elevate = elevate
         print(f"[*] Attempting to connect to local ADB server.")
         self.client = AdbClient(host=host, port=port)
         self.device = self.connect_to_device()
@@ -28,6 +30,9 @@ class ADBScreenshotTaker:
         else:
             print(f"[(┛◉Д◉)┛┻━┻] Failed to connect to server, run 'adb start-server': {host}:{port}")
             sys.exit(1)  # Exit if connection is not successful
+        
+        if self.elevate:
+            self.restart_adb_as_root()
 
     def connect_to_device(self):
         """Connect to the first available ADB device."""
@@ -41,11 +46,43 @@ class ADBScreenshotTaker:
             print(f"[(┛◉Д◉)┛┻━┻] Error connecting to ADB server: {e}")
             return None
 
+    def restart_adb_as_root(self):
+        """Attempt to restart adb with root permissions."""
+        print("[*] Attempting to restart ADB as root")
+        if self.device is None:
+            print("[(┛◉Д◉)┛┻━┻] No device is connected.")
+            return False
+        try:
+            self.device.root()
+            self.wait_for_device_to_be_up()
+        except Exception as e:
+            if str(e) == "adbd is already running as root":
+                print("[•_•] ADB is already root!")
+                return True
+            else:    
+                print("[(┛◉Д◉)┛┻━┻] Failed to restart ADB with root permissions:", str(e))
+                return False
+        return True
+
+    def wait_for_device_to_be_up(self):
+        for _ in range(30):  # Retry for 30 seconds
+            try:
+                if self.device.get_state() == 'device':
+                    print("[*] Device reconnected and ready.")
+                    return True
+            except Exception as e:
+                print(f"Waiting for device to reconnect... {e}")
+
+            time.sleep(1)  # Wait for 1 second before trying again
+
+        print("[(┛◉Д◉)┛┻━┻] Timeout: Device did not reconnect in the expected time.")
+        return False
+
     def take_screenshots(self, interval=5):
         """Take screenshots at specified intervals and save them to a specific directory based on device name."""
         screenshot_dir = f"data/adb_take_screenshot_loop/{self.device_name}/"
         os.makedirs(screenshot_dir, exist_ok=True)
-        
+
         try:
             counter = 1
             while True:
@@ -96,7 +133,7 @@ class ADBScreenshotTaker:
 def main():
     args = parse_args()
 
-    screenshot_taker = ADBScreenshotTaker(display=args.display)
+    screenshot_taker = ADBScreenshotTaker(display=args.display, elevate=args.elevate)
     screenshot_taker.take_screenshots()
 
 if __name__ == "__main__":

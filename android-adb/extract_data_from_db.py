@@ -39,7 +39,10 @@ class DatabaseScanner:
         """Iterate through all .db files in the directory to find sensitive information."""
         for device_dir in self.base_directory.iterdir():  # Iterate through each device-specific directory
             if device_dir.is_dir():  # Check if it's a directory
+                print(f"{'=' * 50}")
                 print(f"Scanning device directory: {device_dir.name}")
+                print(f"{'=' * 50}")
+
                 for db_path in device_dir.rglob('*.db'):
                     try:
                         connection = sqlite3.connect(db_path)
