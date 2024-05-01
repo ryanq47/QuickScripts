@@ -49,6 +49,13 @@ Pulls sensitive data from the extracted databases. Operates off the following ke
 ### adb_restart.sh - Linux Only
 Restart the local adb server. 
 
+## adb_speedtest.py
+
+Runs a speedtest on the target. Defaults to 10 MB random file upload/download.
+
+Arguments:
+ - `--Filesize`: Size (in MB) of file to upload/download
+
 ### adb_take_screenshot_loop.py
 Takes a screenshot every ~5 seconds on the device, and opens in the default application. Saves the images in  data/adb_take_screenshot_loop/dev_ip:dev_port/
 

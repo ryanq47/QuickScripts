@@ -4,7 +4,8 @@ import os
 from ppadb.client import Client as AdbClient
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="ADB Speed Test Tool")
+    parser = argparse.ArgumentParser(description="Perform a speed test between an ADB-connected device and this client. "
+                                                 "This tool measures the upload and download speeds by transferring a file of specified size.")    
     parser.add_argument('--filesize', type=int, help='Size of the file to transfer in megabytes (MB)')
     return parser.parse_args()
 
