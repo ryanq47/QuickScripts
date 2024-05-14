@@ -114,7 +114,7 @@ class ADBScreenshotTaker:
             viewer = subprocess.Popen(['open', image_path])
         else:
             # For Linux, using xdg-open with a viewer that can be tracked and killed
-            viewer = subprocess.Popen(['xdg-open', image_path])
+            viewer = subprocess.Popen(['xdg-open', image_path]) #xdg-open
 
         # Set a timer to automatically close the viewer
         def kill_viewer():
