@@ -9,4 +9,4 @@ Folders:
 'android-adb': A set of ADB scripts for things
 
 
- 
+`ctf_install.sh`: A setup script for linux boxes to get them up to speed with tools,etc. 
