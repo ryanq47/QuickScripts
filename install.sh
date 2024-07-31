@@ -149,27 +149,6 @@ EOF
     fi
 }
 
-add_kali_repos
-
-# Update and upgrade system
-echo_yellow "Updating package list..."
-sudo apt-get update -y
-echo_yellow "Upgrading installed packages..."
-sudo apt-get upgrade -y
-
-# Install essential tools
-echo_hashtags
-echo_yellow "Installing essential tools..."
-echo_hashtags
-install_package git
-install_package python3
-install_package python3-pip
-install_package wget
-install_package curl
-install_package vim
-install_package unzip
-install_package wine
-
 # Set up directory structure
 echo_hashtags
 echo_yellow "Setting up directory structure..."
@@ -184,35 +163,80 @@ create_directory "./CTF/tools/web"
 create_directory "./CTF/tools/pwn"
 create_directory "./CTF/tools/rev"
 
+add_kali_repos
+
+# Update and upgrade system
+echo_yellow "Updating package list..."
+sudo apt-get update -y
+echo_yellow "Upgrading installed packages..."
+sudo apt-get upgrade -y
+
+
+# Install essential tools
+echo_hashtags
+echo_yellow "Installing essential tools..."
+echo_hashtags
+install_package git
+install_package python3
+install_package python3-pip
+install_package wget
+install_package curl
+install_package vim
+install_package unzip
+install_package wine
+install_package firefox-esr
+install_package nano
+
 
 # Download necessary files
 #echo_yellow "Downloading necessary files..."
 #download_file "https://github.com/danielmiessler/SecLists/archive/master.zip" "./CTF/wordlists" "SecLists.zip"
 
-
+##############################
+# Web Tools
+##############################
 echo_hashtags
 echo_yellow "Installing Web Tools"
 echo_hashtags
 
+install_package burpsuite
+install_package gobuster
+install_package dirb
+install_package dirbuster
+install_package feroxbuster
+
+
+##############################
+# Pentest Tools
+##############################
 echo_hashtags
 echo_yellow "Installing Pentest Tools"
 echo_hashtags
 
 pip3 install impacket
+install_package seclists
 
+
+##############################
+# Pwn Tools
+##############################
 echo_hashtags
 echo_yellow "Installing Pwn Tools"
 echo_hashtags
 
 pip3 install pwntools
 
-
+##############################
+# Rev Tools
+##############################
 echo_hashtags
 echo_yellow "Installing Rev Tools"
 echo_hashtags
 
 install_package ghidra
 install_package radare2
+install_package edb
+
 
 # Install GDB and GEF
 install_package gdb
@@ -223,13 +247,14 @@ else
     echo_green "GEF is already installed."
 fi
 
-
 ## NOTES, when installing like this, put the .zip file or whatever in the category folder, it will auto unzip to a folder then in that dir
 #create_directory "./CTF/tools/rev/binja"
 download_file "https://cdn.binary.ninja/installers/binaryninja_free_linux.zip" "./CTF/tools/rev/" "binja.zip"
 #NOT WORKING add_to_path "./CTF/tools/rev/binaryninja/binaryninja"
 
-
+##############################
+# Forensics Tools
+##############################
 echo_hashtags
 echo_yellow "Installing Forensics Tools"
 echo_hashtags
@@ -241,6 +266,18 @@ install_package binwalk
 
 clone_repo "https://github.com/volatilityfoundation/volatility3.git" "./CTF/tools/forensics/volatility3"
 install_requirements "./CTF/tools/forensics/volatility3/requirements.txt"
+
+##############################
+# Misc Tools
+##############################
+echo_hashtags
+echo_yellow "Installing misc tools..."
+echo_hashtags
+install_package strings
+install_package hexdump
+install_package bgrep
+install_package grep
+
 
 # Final message
 echo_green "CTF setup completed successfully!"
