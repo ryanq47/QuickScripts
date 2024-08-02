@@ -179,6 +179,7 @@ echo_hashtags
 install_package git
 install_package python3
 install_package python3-pip
+install_package pipx
 install_package wget
 install_package curl
 install_package vim
@@ -215,6 +216,11 @@ echo_hashtags
 
 pip3 install impacket
 install_package seclists
+install_package crackmapexec
+
+echo_yellow "Installing NetExec"
+pipx ensurepath
+pipx install git+https://github.com/Pennyw0rth/NetExec
 
 
 ##############################
@@ -263,6 +269,10 @@ install_package wireshark
 install_package tshark
 install_package binwalk
 #install_package findaes
+
+# David Morgan .BAT wireshark scripts
+clone_repo "https://github.com/dlm225/PCAPHelper" "./CTF/tools/forensics/"
+
 
 clone_repo "https://github.com/volatilityfoundation/volatility3.git" "./CTF/tools/forensics/volatility3"
 install_requirements "./CTF/tools/forensics/volatility3/requirements.txt"
