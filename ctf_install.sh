@@ -6,6 +6,14 @@
 # Date: Current Date
 # -----------------------------------
 
+
+# Notes:
+# [+] Working: This means the setup is working
+# [-] Working: THis means the setup is not working
+# [?] Working: THis means the setup is not tested
+# Additionally, notes may be added after these tags for addtl info, such as
+# [+] Working: Lori Ipsum ...
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -121,7 +129,7 @@ function clone_repo {
 # Function to add Kali Linux repositories
 add_kali_repos() {
     echo_yellow "Adding Kali Linux repositories..."
-    
+
     # Add Kali Linux repositories to sources list
     cat <<EOF | sudo tee /etc/apt/sources.list.d/kali.list
 deb http://http.kali.org/kali kali-rolling main non-free contrib
@@ -131,7 +139,7 @@ EOF
     # Import the Kali Linux GPG key
     echo_yellow "Importing Kali Linux GPG key..."
     wget -q -O - https://archive.kali.org/archive-key.asc | sudo apt-key add -
-    
+
     if [ $? -eq 0 ]; then
         echo_green "Successfully added Kali Linux repositories and imported GPG key."
     else
@@ -154,6 +162,8 @@ echo_hashtags
 echo_yellow "Setting up directory structure..."
 echo_hashtags
 
+
+# [+] Working
 create_directory "./CTF"
 create_directory "./CTF/tools"
 create_directory "./CTF/challenges"
@@ -162,9 +172,12 @@ create_directory "./CTF/tools/forensics"
 create_directory "./CTF/tools/web"
 create_directory "./CTF/tools/pwn"
 create_directory "./CTF/tools/rev"
+create_directory "./CTF/tools/radio"
 
+# [+] Working
 add_kali_repos
 
+# [+] Working
 # Update and upgrade system
 echo_yellow "Updating package list..."
 sudo apt-get update -y
@@ -176,16 +189,27 @@ sudo apt-get upgrade -y
 echo_hashtags
 echo_yellow "Installing essential tools..."
 echo_hashtags
+# [+] Working
 install_package git
+# [+] Working
 install_package python3
+# [+] Working
 install_package python3-pip
+# [+] Working
 install_package pipx
+# [+] Working
 install_package wget
+# [+] Working
 install_package curl
+# [+] Working
 install_package vim
+# [+] Working
 install_package unzip
+# [+] Working
 install_package wine
+# [+] Working
 install_package firefox-esr
+# [+] Working
 install_package nano
 
 
@@ -200,10 +224,15 @@ echo_hashtags
 echo_yellow "Installing Web Tools"
 echo_hashtags
 
+# [+] Working
 install_package burpsuite
+# [+] Working
 install_package gobuster
+# [+] Working
 install_package dirb
+# [+] Working
 install_package dirbuster
+# [+] Working
 install_package feroxbuster
 
 
@@ -214,10 +243,12 @@ echo_hashtags
 echo_yellow "Installing Pentest Tools"
 echo_hashtags
 
+# [+] Working
 pip3 install impacket
 install_package seclists
 install_package crackmapexec
 
+# [+] Working
 echo_yellow "Installing NetExec"
 pipx ensurepath
 pipx install git+https://github.com/Pennyw0rth/NetExec
@@ -230,6 +261,7 @@ echo_hashtags
 echo_yellow "Installing Pwn Tools"
 echo_hashtags
 
+# [+] Working
 pip3 install pwntools
 
 ##############################
@@ -239,8 +271,11 @@ echo_hashtags
 echo_yellow "Installing Rev Tools"
 echo_hashtags
 
+# [+] Working
 install_package ghidra
+# [+] Working
 install_package radare2
+# [+] Working
 install_package edb
 
 
@@ -265,8 +300,11 @@ echo_hashtags
 echo_yellow "Installing Forensics Tools"
 echo_hashtags
 
+# [+] Working
 install_package wireshark
+# [+] Working
 install_package tshark
+# [+] Working
 install_package binwalk
 #install_package findaes
 
@@ -283,16 +321,38 @@ install_requirements "./CTF/tools/forensics/volatility3/requirements.txt"
 echo_hashtags
 echo_yellow "Installing misc tools..."
 echo_hashtags
+
+# [+] Working
 install_package strings
+# [+] Working
 install_package hexdump
+# [+] Working
 install_package bgrep
+# [+] Working
 install_package grep
+# [+] Working
 
+##############################
+# Misc Tools
+##############################
+echo_hashtags
+echo_yellow "Installing SDR tools..."
+echo_hashtags
 
-# Final message
-echo_green "CTF setup completed successfully!"
+# [?] Working: GQRX, SDR software for listening in to radio freq.
+install_package gqrx
 
+# [?] Working - SDR software, can broadcast as well
+echo_yellow "Installing Universal Radio Hacker"
+pipx install urh
 
+# [?] Working
+#gqrx-scanner - scanner for gqrx, remote mode needs to be enabled.
+clone_repo "https://github.com/neural75/gqrx-scanner", "./CTF/tools/radio/"
+# do install stuff here
+cmake ./CTF/tools/radio/gqrx-scanner
+make ./CTF/tools/radio/gqrx-scanner
+sudo make install ./CTF/tools/radio/gqrx-scanner
 
 ## To Add:
 # Forensics stuff
